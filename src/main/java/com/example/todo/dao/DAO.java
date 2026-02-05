@@ -1,4 +1,4 @@
-package com.example.todo;
+package com.example.todo.dao;
 
 import java.sql.Connection;
 import java.util.List;

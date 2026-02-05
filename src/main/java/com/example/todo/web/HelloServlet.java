@@ -1,4 +1,4 @@
-package com.example.todo;
+package com.example.todo.web;
 
 import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.*;
@@ -16,9 +16,12 @@ public class HelloServlet extends HttpServlet {
 
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String name = request.getParameter("name");
-        String fullMessage = message + (name == null || name.trim().isEmpty() ? "" : " " + name);
-
-        request.setAttribute("message", fullMessage);
+        if (name == null || name.trim().isEmpty()) {
+            request.setAttribute("error", "Nom obligatoire.");
+        } else {
+            String fullMessage = message + " " + name.trim();
+            request.setAttribute("message", fullMessage);
+        }
         RequestDispatcher dispatcher = request.getRequestDispatcher("/index.jsp");
         try {
             dispatcher.forward(request, response);

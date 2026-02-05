@@ -1,5 +1,6 @@
-package com.example.todo;
+package com.example.todo.dao;
 
+import com.example.todo.model.Annonce;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -39,7 +40,7 @@ public class AnnonceDAO extends DAO<Annonce> {
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return new Annonce(
-                            rs.getInt("id"),
+                            rs.getLong("id"),
                             rs.getString("title"),
                             rs.getString("description"),
                             rs.getString("adress"),
@@ -61,7 +62,7 @@ public class AnnonceDAO extends DAO<Annonce> {
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return new Annonce(
-                            rs.getInt("id"),
+                            rs.getLong("id"),
                             rs.getString("title"),
                             rs.getString("description"),
                             rs.getString("adress"),
@@ -84,7 +85,7 @@ public class AnnonceDAO extends DAO<Annonce> {
              ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
                 annonces.add(new Annonce(
-                        rs.getInt("id"),
+                        rs.getLong("id"),
                         rs.getString("title"),
                         rs.getString("description"),
                         rs.getString("adress"),
@@ -108,7 +109,7 @@ public class AnnonceDAO extends DAO<Annonce> {
             stmt.setString(4, obj.getMail());
             Timestamp ts = obj.getDate() != null ? obj.getDate() : new Timestamp(System.currentTimeMillis());
             stmt.setTimestamp(5, ts);
-            stmt.setInt(6, obj.getId());
+            stmt.setLong(6, obj.getId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -120,7 +121,7 @@ public class AnnonceDAO extends DAO<Annonce> {
     public boolean delete(Annonce obj) {
         String sql = "DELETE FROM annonce WHERE id = ?";
         try (PreparedStatement stmt = connect.prepareStatement(sql)) {
-            stmt.setInt(1, obj.getId());
+            stmt.setLong(1, obj.getId());
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();

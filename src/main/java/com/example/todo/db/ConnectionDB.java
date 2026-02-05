@@ -1,4 +1,4 @@
-package com.example.todo;
+package com.example.todo.db;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
