@@ -11,7 +11,11 @@ import com.example.todo.model.Annonce;
 import com.example.todo.model.Category;
 import com.example.todo.model.User;
 import com.example.todo.repository.AnnonceRepository;
+import com.example.todo.service.exception.BadRequestServiceException;
+import com.example.todo.service.exception.ConflictServiceException;
+import com.example.todo.service.exception.ForbiddenServiceException;
 import com.example.todo.service.exception.NotFoundServiceException;
+import com.example.todo.service.exception.UnauthorizedServiceException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 
@@ -20,8 +24,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class AnnonceService {
-    public AnnonceResponse createAnnonce(AnnonceCreateRequest request) {
+    public AnnonceResponse createAnnonce(AnnonceCreateRequest request, Long currentUserId) {
+        ensureAuthenticated(currentUserId);
         Annonce created = executeInTransaction(entityManager -> {
+            if (!currentUserId.equals(request.getAuthorId())) {
+                throw new BadRequestServiceException("Author does not match authenticated user");
+            }
             Annonce annonce = new Annonce();
             annonce.setTitle(request.getTitle());
             annonce.setDescription(request.getDescription());
@@ -35,13 +43,16 @@ public class AnnonceService {
         return AnnonceMapper.toResponse(created);
     }
 
-    public AnnonceResponse updateAnnonce(Long annonceId, AnnonceUpdateRequest request) {
+    public AnnonceResponse updateAnnonce(Long annonceId, AnnonceUpdateRequest request, Long currentUserId) {
+        ensureAuthenticated(currentUserId);
         Annonce updated = executeInTransaction(entityManager -> {
             AnnonceRepository repository = annonceRepository(entityManager);
             Annonce annonce = repository.findById(annonceId);
             if (annonce == null) {
                 throw new NotFoundServiceException("Annonce not found");
             }
+            ensureAuthor(annonce, currentUserId);
+            enforcePublishedRules(annonce, request);
             annonce.setTitle(request.getTitle());
             annonce.setDescription(request.getDescription());
             annonce.setAdress(request.getAdress());
@@ -55,25 +66,33 @@ public class AnnonceService {
         return AnnonceMapper.toResponse(updated);
     }
 
-    public void deleteAnnonce(Long annonceId) {
+    public void deleteAnnonce(Long annonceId, Long currentUserId) {
+        ensureAuthenticated(currentUserId);
         executeInTransaction(entityManager -> {
             AnnonceRepository repository = annonceRepository(entityManager);
             Annonce annonce = repository.findById(annonceId);
             if (annonce == null) {
                 throw new NotFoundServiceException("Annonce not found");
             }
+            ensureAuthor(annonce, currentUserId);
+            if (annonce.getStatus() != Annonce.Status.ARCHIVED) {
+                throw new ConflictServiceException("Annonce must be archived before deletion");
+            }
             repository.delete(annonceId);
             return null;
         });
     }
 
-    public AnnonceResponse patchAnnonce(Long annonceId, AnnoncePatchRequest request) {
+    public AnnonceResponse patchAnnonce(Long annonceId, AnnoncePatchRequest request, Long currentUserId) {
+        ensureAuthenticated(currentUserId);
         Annonce updated = executeInTransaction(entityManager -> {
             AnnonceRepository repository = annonceRepository(entityManager);
             Annonce annonce = repository.findById(annonceId);
             if (annonce == null) {
                 throw new NotFoundServiceException("Annonce not found");
             }
+            ensureAuthor(annonce, currentUserId);
+            enforcePublishedRules(annonce, request);
             if (request.getTitle() != null) {
                 annonce.setTitle(request.getTitle());
             }
@@ -149,5 +168,58 @@ public class AnnonceService {
 
     protected AnnonceRepository annonceRepository(EntityManager entityManager) {
         return new AnnonceRepository(entityManager);
+    }
+
+    private void ensureAuthenticated(Long currentUserId) {
+        if (currentUserId == null) {
+            throw new UnauthorizedServiceException("Unauthorized");
+        }
+    }
+
+    private void ensureAuthor(Annonce annonce, Long currentUserId) {
+        if (annonce.getAuthor() == null || annonce.getAuthor().getId() == null) {
+            throw new ForbiddenServiceException("Author not available");
+        }
+        if (!annonce.getAuthor().getId().equals(currentUserId)) {
+            throw new ForbiddenServiceException("Only the author can modify or delete this annonce");
+        }
+    }
+
+    private void enforcePublishedRules(Annonce annonce, AnnonceUpdateRequest request) {
+        if (annonce.getStatus() != Annonce.Status.PUBLISHED) {
+            return;
+        }
+        boolean statusToArchived = request.getStatus() == Annonce.Status.ARCHIVED;
+        boolean fieldsUnchanged = safeEquals(annonce.getTitle(), request.getTitle())
+                && safeEquals(annonce.getDescription(), request.getDescription())
+                && safeEquals(annonce.getAdress(), request.getAdress())
+                && safeEquals(annonce.getMail(), request.getMail())
+                && safeEquals(annonce.getCategory() == null ? null : annonce.getCategory().getId(),
+                request.getCategoryId());
+        if (!statusToArchived || !fieldsUnchanged) {
+            throw new ConflictServiceException("Published annonces cannot be modified");
+        }
+    }
+
+    private void enforcePublishedRules(Annonce annonce, AnnoncePatchRequest request) {
+        if (annonce.getStatus() != Annonce.Status.PUBLISHED) {
+            return;
+        }
+        boolean hasFieldChanges = request.getTitle() != null
+                || request.getDescription() != null
+                || request.getAdress() != null
+                || request.getMail() != null
+                || request.getCategoryId() != null;
+        boolean statusToArchived = request.getStatus() == Annonce.Status.ARCHIVED;
+        if (hasFieldChanges || !statusToArchived) {
+            throw new ConflictServiceException("Published annonces cannot be modified");
+        }
+    }
+
+    private boolean safeEquals(Object left, Object right) {
+        if (left == null) {
+            return right == null;
+        }
+        return left.equals(right);
     }
 }
