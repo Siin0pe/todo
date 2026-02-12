@@ -41,6 +41,17 @@ public class AnnonceRepository {
         return query.getResultList();
     }
 
+    public List<Annonce> findAllWithRelations(int page, int size) {
+        TypedQuery<Annonce> query = entityManager.createQuery(
+                "SELECT a FROM Annonce a " +
+                        "LEFT JOIN FETCH a.author " +
+                        "LEFT JOIN FETCH a.category " +
+                        "ORDER BY a.date DESC",
+                Annonce.class);
+        applyPagination(query, page, size);
+        return query.getResultList();
+    }
+
     public Annonce update(Annonce annonce) {
         return entityManager.merge(annonce);
     }

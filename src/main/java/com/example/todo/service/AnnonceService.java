@@ -1,160 +1,125 @@
 package com.example.todo.service;
 
+import com.example.todo.api.dto.AnnonceCreateRequest;
+import com.example.todo.api.dto.AnnoncePatchRequest;
+import com.example.todo.api.dto.AnnonceResponse;
+import com.example.todo.api.dto.AnnonceUpdateRequest;
+import com.example.todo.api.dto.PaginatedResponse;
+import com.example.todo.api.mapper.AnnonceMapper;
 import com.example.todo.db.EntityManagerUtil;
 import com.example.todo.model.Annonce;
 import com.example.todo.model.Category;
 import com.example.todo.model.User;
 import com.example.todo.repository.AnnonceRepository;
+import com.example.todo.service.exception.NotFoundServiceException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
 
-import java.sql.Timestamp;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class AnnonceService {
-    public Annonce createAnnonce(Annonce annonce) {
-        return executeInTransaction(entityManager -> {
-            AnnonceRepository repository = annonceRepository(entityManager);
-            return repository.create(annonce);
-        });
-    }
-
-    public Annonce createAnnonce(String title,
-                                 String description,
-                                 String adress,
-                                 String mail,
-                                 Long authorId,
-                                 Long categoryId) {
-        return executeInTransaction(entityManager -> {
+    public AnnonceResponse createAnnonce(AnnonceCreateRequest request) {
+        Annonce created = executeInTransaction(entityManager -> {
             Annonce annonce = new Annonce();
-            annonce.setTitle(title);
-            annonce.setDescription(description);
-            annonce.setAdress(adress);
-            annonce.setMail(mail);
-            annonce.setDate(new Timestamp(System.currentTimeMillis()));
-            annonce.setStatus(Annonce.Status.DRAFT);
-            annonce.setAuthor(entityManager.getReference(User.class, authorId));
-            annonce.setCategory(entityManager.getReference(Category.class, categoryId));
+            annonce.setTitle(request.getTitle());
+            annonce.setDescription(request.getDescription());
+            annonce.setAdress(request.getAdress());
+            annonce.setMail(request.getMail());
+            annonce.setAuthor(entityManager.getReference(User.class, request.getAuthorId()));
+            annonce.setCategory(entityManager.getReference(Category.class, request.getCategoryId()));
             AnnonceRepository repository = annonceRepository(entityManager);
             return repository.create(annonce);
         });
+        return AnnonceMapper.toResponse(created);
     }
 
-    public Annonce updateAnnonce(Annonce annonce) {
-        return executeInTransaction(entityManager -> {
-            AnnonceRepository repository = annonceRepository(entityManager);
-            return repository.update(annonce);
-        });
-    }
-
-    public Annonce updateAnnonce(Long annonceId,
-                                 String title,
-                                 String description,
-                                 String adress,
-                                 String mail,
-                                 Long categoryId) {
-        return executeInTransaction(entityManager -> {
+    public AnnonceResponse updateAnnonce(Long annonceId, AnnonceUpdateRequest request) {
+        Annonce updated = executeInTransaction(entityManager -> {
             AnnonceRepository repository = annonceRepository(entityManager);
             Annonce annonce = repository.findById(annonceId);
             if (annonce == null) {
-                return null;
+                throw new NotFoundServiceException("Annonce not found");
             }
-            annonce.setTitle(title);
-            annonce.setDescription(description);
-            annonce.setAdress(adress);
-            annonce.setMail(mail);
-            annonce.setCategory(entityManager.getReference(Category.class, categoryId));
+            annonce.setTitle(request.getTitle());
+            annonce.setDescription(request.getDescription());
+            annonce.setAdress(request.getAdress());
+            annonce.setMail(request.getMail());
+            annonce.setCategory(entityManager.getReference(Category.class, request.getCategoryId()));
+            if (request.getStatus() != null) {
+                annonce.setStatus(request.getStatus());
+            }
             return repository.update(annonce);
         });
-    }
-
-    public Annonce publishAnnonce(Long annonceId) {
-        return executeInTransaction(entityManager -> {
-            AnnonceRepository repository = annonceRepository(entityManager);
-            Annonce annonce = repository.findById(annonceId);
-            if (annonce == null) {
-                return null;
-            }
-            annonce.setStatus(Annonce.Status.PUBLISHED);
-            return repository.update(annonce);
-        });
-    }
-
-    public Annonce archiveAnnonce(Long annonceId) {
-        return executeInTransaction(entityManager -> {
-            AnnonceRepository repository = annonceRepository(entityManager);
-            Annonce annonce = repository.findById(annonceId);
-            if (annonce == null) {
-                return null;
-            }
-            annonce.setStatus(Annonce.Status.ARCHIVED);
-            return repository.update(annonce);
-        });
+        return AnnonceMapper.toResponse(updated);
     }
 
     public void deleteAnnonce(Long annonceId) {
         executeInTransaction(entityManager -> {
             AnnonceRepository repository = annonceRepository(entityManager);
+            Annonce annonce = repository.findById(annonceId);
+            if (annonce == null) {
+                throw new NotFoundServiceException("Annonce not found");
+            }
             repository.delete(annonceId);
             return null;
         });
     }
 
-    public Annonce findById(Long annonceId) {
-        EntityManager entityManager = getEntityManager();
-        try {
+    public AnnonceResponse patchAnnonce(Long annonceId, AnnoncePatchRequest request) {
+        Annonce updated = executeInTransaction(entityManager -> {
             AnnonceRepository repository = annonceRepository(entityManager);
-            return repository.findById(annonceId);
-        } finally {
-            entityManager.close();
-        }
-    }
-
-    public Annonce findByIdWithRelations(Long annonceId) {
-        EntityManager entityManager = getEntityManager();
-        try {
-            AnnonceRepository repository = annonceRepository(entityManager);
-            return repository.findByIdWithRelations(annonceId);
-        } finally {
-            entityManager.close();
-        }
-    }
-
-    public List<Annonce> listAnnonces(int page, int size) {
-        EntityManager entityManager = getEntityManager();
-        try {
-            AnnonceRepository repository = annonceRepository(entityManager);
-            return repository.findAll(page, size);
-        } finally {
-            entityManager.close();
-        }
-    }
-
-    public List<Annonce> searchAnnonces(String keyword, int page, int size) {
-        EntityManager entityManager = getEntityManager();
-        try {
-            AnnonceRepository repository = annonceRepository(entityManager);
-            return repository.searchByKeyword(keyword, page, size);
-        } finally {
-            entityManager.close();
-        }
-    }
-
-    public List<Annonce> filterAnnonces(Long categoryId, Annonce.Status status, int page, int size) {
-        EntityManager entityManager = getEntityManager();
-        try {
-            AnnonceRepository repository = annonceRepository(entityManager);
-            if (categoryId != null && status != null) {
-                return repository.findByCategoryAndStatus(categoryId, status, page, size);
+            Annonce annonce = repository.findById(annonceId);
+            if (annonce == null) {
+                throw new NotFoundServiceException("Annonce not found");
             }
-            if (categoryId != null) {
-                return repository.findByCategory(categoryId, page, size);
+            if (request.getTitle() != null) {
+                annonce.setTitle(request.getTitle());
             }
-            if (status != null) {
-                return repository.findByStatus(status, page, size);
+            if (request.getDescription() != null) {
+                annonce.setDescription(request.getDescription());
             }
-            return repository.findAll(page, size);
+            if (request.getAdress() != null) {
+                annonce.setAdress(request.getAdress());
+            }
+            if (request.getMail() != null) {
+                annonce.setMail(request.getMail());
+            }
+            if (request.getCategoryId() != null) {
+                annonce.setCategory(entityManager.getReference(Category.class, request.getCategoryId()));
+            }
+            if (request.getStatus() != null) {
+                annonce.setStatus(request.getStatus());
+            }
+            return repository.update(annonce);
+        });
+        return AnnonceMapper.toResponse(updated);
+    }
+
+    public AnnonceResponse findById(Long annonceId) {
+        EntityManager entityManager = getEntityManager();
+        try {
+            AnnonceRepository repository = annonceRepository(entityManager);
+            Annonce annonce = repository.findByIdWithRelations(annonceId);
+            if (annonce == null) {
+                throw new NotFoundServiceException("Annonce not found");
+            }
+            return AnnonceMapper.toResponse(annonce);
+        } finally {
+            entityManager.close();
+        }
+    }
+
+    public PaginatedResponse<AnnonceResponse> listAnnonces(int page, int size) {
+        EntityManager entityManager = getEntityManager();
+        try {
+            AnnonceRepository repository = annonceRepository(entityManager);
+            List<Annonce> annonces = repository.findAllWithRelations(page, size);
+            List<AnnonceResponse> items = annonces.stream()
+                    .map(AnnonceMapper::toResponse)
+                    .collect(Collectors.toList());
+            return new PaginatedResponse<>(page, size, items);
         } finally {
             entityManager.close();
         }
