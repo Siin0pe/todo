@@ -11,6 +11,7 @@ import com.example.todo.model.Annonce;
 import com.example.todo.model.Category;
 import com.example.todo.model.User;
 import com.example.todo.repository.AnnonceRepository;
+import com.example.todo.security.jaas.SubjectIdentity;
 import com.example.todo.service.exception.BadRequestServiceException;
 import com.example.todo.service.exception.ConflictServiceException;
 import com.example.todo.service.exception.ForbiddenServiceException;
@@ -18,16 +19,28 @@ import com.example.todo.service.exception.NotFoundServiceException;
 import com.example.todo.service.exception.UnauthorizedServiceException;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityTransaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class AnnonceService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AnnonceService.class);
+    private static final String ADMIN_ROLE = "ROLE_ADMIN";
+    private static final String STATUS_ROLE_GUARD_PROPERTY = "todo.security.restrict.status.actions";
+
     public AnnonceResponse createAnnonce(AnnonceCreateRequest request, Long currentUserId) {
+        currentUserId = resolveCurrentUserId(currentUserId);
+        LOGGER.info("annonce_service_create_requested currentUserId={} authorId={} categoryId={}",
+                currentUserId, request.getAuthorId(), request.getCategoryId());
         ensureAuthenticated(currentUserId);
+        final Long resolvedUserId = currentUserId;
         Annonce created = executeInTransaction(entityManager -> {
-            if (!currentUserId.equals(request.getAuthorId())) {
+            if (!resolvedUserId.equals(request.getAuthorId())) {
+                LOGGER.warn("annonce_service_create_rejected_author_mismatch currentUserId={} authorId={}",
+                        resolvedUserId, request.getAuthorId());
                 throw new BadRequestServiceException("Author does not match authenticated user");
             }
             Annonce annonce = new Annonce();
@@ -40,19 +53,25 @@ public class AnnonceService {
             AnnonceRepository repository = annonceRepository(entityManager);
             return repository.create(annonce);
         });
+        LOGGER.info("annonce_service_create_succeeded annonceId={} authorId={}", created.getId(), resolvedUserId);
         return AnnonceMapper.toResponse(created);
     }
 
     public AnnonceResponse updateAnnonce(Long annonceId, AnnonceUpdateRequest request, Long currentUserId) {
+        currentUserId = resolveCurrentUserId(currentUserId);
+        LOGGER.info("annonce_service_update_requested annonceId={} currentUserId={}", annonceId, currentUserId);
         ensureAuthenticated(currentUserId);
+        final Long resolvedUserId = currentUserId;
         Annonce updated = executeInTransaction(entityManager -> {
             AnnonceRepository repository = annonceRepository(entityManager);
             Annonce annonce = repository.findById(annonceId);
             if (annonce == null) {
+                LOGGER.warn("annonce_service_update_not_found annonceId={}", annonceId);
                 throw new NotFoundServiceException("Annonce not found");
             }
-            ensureAuthor(annonce, currentUserId);
+            ensureAuthor(annonce, resolvedUserId);
             enforcePublishedRules(annonce, request);
+            enforceStatusTransitionRole(request.getStatus());
             annonce.setTitle(request.getTitle());
             annonce.setDescription(request.getDescription());
             annonce.setAdress(request.getAdress());
@@ -63,36 +82,49 @@ public class AnnonceService {
             }
             return repository.update(annonce);
         });
+        LOGGER.info("annonce_service_update_succeeded annonceId={} currentUserId={}", annonceId, resolvedUserId);
         return AnnonceMapper.toResponse(updated);
     }
 
     public void deleteAnnonce(Long annonceId, Long currentUserId) {
+        currentUserId = resolveCurrentUserId(currentUserId);
+        LOGGER.info("annonce_service_delete_requested annonceId={} currentUserId={}", annonceId, currentUserId);
         ensureAuthenticated(currentUserId);
+        final Long resolvedUserId = currentUserId;
         executeInTransaction(entityManager -> {
             AnnonceRepository repository = annonceRepository(entityManager);
             Annonce annonce = repository.findById(annonceId);
             if (annonce == null) {
+                LOGGER.warn("annonce_service_delete_not_found annonceId={}", annonceId);
                 throw new NotFoundServiceException("Annonce not found");
             }
-            ensureAuthor(annonce, currentUserId);
+            ensureAuthor(annonce, resolvedUserId);
             if (annonce.getStatus() != Annonce.Status.ARCHIVED) {
+                LOGGER.warn("annonce_service_delete_rejected_status annonceId={} status={}",
+                        annonceId, annonce.getStatus());
                 throw new ConflictServiceException("Annonce must be archived before deletion");
             }
             repository.delete(annonceId);
             return null;
         });
+        LOGGER.info("annonce_service_delete_succeeded annonceId={} currentUserId={}", annonceId, resolvedUserId);
     }
 
     public AnnonceResponse patchAnnonce(Long annonceId, AnnoncePatchRequest request, Long currentUserId) {
+        currentUserId = resolveCurrentUserId(currentUserId);
+        LOGGER.info("annonce_service_patch_requested annonceId={} currentUserId={}", annonceId, currentUserId);
         ensureAuthenticated(currentUserId);
+        final Long resolvedUserId = currentUserId;
         Annonce updated = executeInTransaction(entityManager -> {
             AnnonceRepository repository = annonceRepository(entityManager);
             Annonce annonce = repository.findById(annonceId);
             if (annonce == null) {
+                LOGGER.warn("annonce_service_patch_not_found annonceId={}", annonceId);
                 throw new NotFoundServiceException("Annonce not found");
             }
-            ensureAuthor(annonce, currentUserId);
+            ensureAuthor(annonce, resolvedUserId);
             enforcePublishedRules(annonce, request);
+            enforceStatusTransitionRole(request.getStatus());
             if (request.getTitle() != null) {
                 annonce.setTitle(request.getTitle());
             }
@@ -113,17 +145,21 @@ public class AnnonceService {
             }
             return repository.update(annonce);
         });
+        LOGGER.info("annonce_service_patch_succeeded annonceId={} currentUserId={}", annonceId, resolvedUserId);
         return AnnonceMapper.toResponse(updated);
     }
 
     public AnnonceResponse findById(Long annonceId) {
+        LOGGER.info("annonce_service_find_by_id_requested annonceId={}", annonceId);
         EntityManager entityManager = getEntityManager();
         try {
             AnnonceRepository repository = annonceRepository(entityManager);
             Annonce annonce = repository.findByIdWithRelations(annonceId);
             if (annonce == null) {
+                LOGGER.warn("annonce_service_find_by_id_not_found annonceId={}", annonceId);
                 throw new NotFoundServiceException("Annonce not found");
             }
+            LOGGER.info("annonce_service_find_by_id_succeeded annonceId={}", annonceId);
             return AnnonceMapper.toResponse(annonce);
         } finally {
             entityManager.close();
@@ -131,6 +167,7 @@ public class AnnonceService {
     }
 
     public PaginatedResponse<AnnonceResponse> listAnnonces(int page, int size) {
+        LOGGER.info("annonce_service_list_requested page={} size={}", page, size);
         EntityManager entityManager = getEntityManager();
         try {
             AnnonceRepository repository = annonceRepository(entityManager);
@@ -138,6 +175,7 @@ public class AnnonceService {
             List<AnnonceResponse> items = annonces.stream()
                     .map(AnnonceMapper::toResponse)
                     .collect(Collectors.toList());
+            LOGGER.info("annonce_service_list_succeeded page={} size={} returned={}", page, size, items.size());
             return new PaginatedResponse<>(page, size, items);
         } finally {
             entityManager.close();
@@ -154,6 +192,7 @@ public class AnnonceService {
             return result;
         } catch (RuntimeException e) {
             if (transaction.isActive()) {
+                LOGGER.warn("annonce_service_transaction_rollback reason={}", e.getClass().getSimpleName());
                 transaction.rollback();
             }
             throw e;
@@ -172,17 +211,26 @@ public class AnnonceService {
 
     private void ensureAuthenticated(Long currentUserId) {
         if (currentUserId == null) {
+            LOGGER.warn("annonce_service_authentication_missing");
             throw new UnauthorizedServiceException("Unauthorized");
         }
     }
 
     private void ensureAuthor(Annonce annonce, Long currentUserId) {
         if (annonce.getAuthor() == null || annonce.getAuthor().getId() == null) {
+            LOGGER.warn("annonce_service_author_missing annonceId={}", annonce.getId());
             throw new ForbiddenServiceException("Author not available");
         }
         if (!annonce.getAuthor().getId().equals(currentUserId)) {
+            LOGGER.warn("annonce_service_author_mismatch annonceId={} expectedAuthorId={} currentUserId={}",
+                    annonce.getId(), annonce.getAuthor().getId(), currentUserId);
             throw new ForbiddenServiceException("Only the author can modify or delete this annonce");
         }
+    }
+
+    private Long resolveCurrentUserId(Long fallbackUserId) {
+        Long fromSubject = SubjectIdentity.currentUserId();
+        return fromSubject != null ? fromSubject : fallbackUserId;
     }
 
     private void enforcePublishedRules(Annonce annonce, AnnonceUpdateRequest request) {
@@ -197,6 +245,7 @@ public class AnnonceService {
                 && safeEquals(annonce.getCategory() == null ? null : annonce.getCategory().getId(),
                 request.getCategoryId());
         if (!statusToArchived || !fieldsUnchanged) {
+            LOGGER.warn("annonce_service_update_rejected_published annonceId={}", annonce.getId());
             throw new ConflictServiceException("Published annonces cannot be modified");
         }
     }
@@ -212,8 +261,26 @@ public class AnnonceService {
                 || request.getCategoryId() != null;
         boolean statusToArchived = request.getStatus() == Annonce.Status.ARCHIVED;
         if (hasFieldChanges || !statusToArchived) {
+            LOGGER.warn("annonce_service_patch_rejected_published annonceId={}", annonce.getId());
             throw new ConflictServiceException("Published annonces cannot be modified");
         }
+    }
+
+    private void enforceStatusTransitionRole(Annonce.Status requestedStatus) {
+        if (!isStatusRoleGuardEnabled()) {
+            return;
+        }
+        if (requestedStatus != Annonce.Status.PUBLISHED && requestedStatus != Annonce.Status.ARCHIVED) {
+            return;
+        }
+        if (!SubjectIdentity.hasRole(ADMIN_ROLE)) {
+            LOGGER.warn("annonce_service_status_role_rejected status={} requiredRole={}", requestedStatus, ADMIN_ROLE);
+            throw new ForbiddenServiceException("This status transition requires admin role");
+        }
+    }
+
+    private boolean isStatusRoleGuardEnabled() {
+        return Boolean.parseBoolean(System.getProperty(STATUS_ROLE_GUARD_PROPERTY, "false"));
     }
 
     private boolean safeEquals(Object left, Object right) {

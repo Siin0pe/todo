@@ -1,31 +1,39 @@
 package com.example.todo.api.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+@Schema(name = "AnnonceCreateRequest", description = "Payload de creation d'une annonce")
 public class AnnonceCreateRequest {
+    @Schema(description = "Titre de l'annonce", example = "Appartement T2 centre ville", maxLength = 64)
     @NotBlank
     @Size(max = 64)
     private String title;
 
+    @Schema(description = "Description detaillee", example = "Bel appartement proche des commerces", maxLength = 256)
     @NotBlank
     @Size(max = 256)
     private String description;
 
+    @Schema(description = "Adresse", example = "10 rue des Fleurs, Paris", maxLength = 64)
     @NotBlank
     @Size(max = 64)
     private String adress;
 
+    @Schema(description = "Email de contact", example = "contact@example.com", maxLength = 64)
     @NotBlank
     @Email
     @Size(max = 64)
     private String mail;
 
+    @Schema(description = "Identifiant auteur (ignore si derive du token cote serveur)", example = "1")
     @NotNull
     private Long authorId;
 
+    @Schema(description = "Identifiant categorie", example = "2")
     @NotNull
     private Long categoryId;
 

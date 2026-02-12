@@ -1,14 +1,26 @@
 package com.example.todo.api.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(name = "AnnonceResponse", description = "Representation d'une annonce")
 public class AnnonceResponse {
+    @Schema(example = "10")
     private Long id;
+    @Schema(example = "Appartement T2 centre ville")
     private String title;
+    @Schema(example = "Bel appartement proche metro")
     private String description;
+    @Schema(example = "10 rue des Fleurs, Paris")
     private String adress;
+    @Schema(example = "contact@example.com")
     private String mail;
+    @Schema(description = "Date de creation", example = "2026-02-12T16:00:00Z")
     private String date;
+    @Schema(example = "PUBLISHED")
     private String status;
+    @Schema(example = "1")
     private Long authorId;
+    @Schema(example = "2")
     private Long categoryId;
 
     public AnnonceResponse() {

@@ -7,11 +7,15 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.stream.Collectors;
 
 @Provider
 public class ConstraintViolationExceptionMapper implements ExceptionMapper<ConstraintViolationException> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConstraintViolationExceptionMapper.class);
+
     @Override
     public Response toResponse(ConstraintViolationException exception) {
         String message = exception.getConstraintViolations().stream()
@@ -20,6 +24,7 @@ public class ConstraintViolationExceptionMapper implements ExceptionMapper<Const
         if (message == null || message.isEmpty()) {
             message = "Validation failed";
         }
+        LOGGER.warn("validation_failed violations={}", exception.getConstraintViolations().size());
         return Response.status(Response.Status.BAD_REQUEST)
                 .type(MediaType.APPLICATION_JSON)
                 .entity(new ErrorResponse(message))

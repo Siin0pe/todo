@@ -1,7 +1,12 @@
 package com.example.todo.api.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(name = "CategoryResponse", description = "Representation d'une categorie")
 public class CategoryResponse {
+    @Schema(example = "2")
     private Long id;
+    @Schema(example = "Immobilier")
     private String label;
 
     public CategoryResponse() {

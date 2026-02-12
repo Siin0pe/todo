@@ -1,8 +1,14 @@
 package com.example.todo.api.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(name = "UserResponse", description = "Representation utilisateur")
 public class UserResponse {
+    @Schema(example = "1")
     private Long id;
+    @Schema(example = "john.doe")
     private String username;
+    @Schema(example = "john.doe@example.com")
     private String email;
 
     public UserResponse() {

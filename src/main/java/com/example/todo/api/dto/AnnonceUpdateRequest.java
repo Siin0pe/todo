@@ -1,31 +1,39 @@
 package com.example.todo.api.dto;
 
 import com.example.todo.model.Annonce;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+@Schema(name = "AnnonceUpdateRequest", description = "Payload de mise a jour complete d'une annonce")
 public class AnnonceUpdateRequest {
+    @Schema(description = "Titre de l'annonce", example = "Maison avec jardin", maxLength = 64)
     @NotBlank
     @Size(max = 64)
     private String title;
 
+    @Schema(description = "Description detaillee", example = "Maison 4 pieces, quartier calme", maxLength = 256)
     @NotBlank
     @Size(max = 256)
     private String description;
 
+    @Schema(description = "Adresse", example = "5 avenue de la Republique, Lille", maxLength = 64)
     @NotBlank
     @Size(max = 64)
     private String adress;
 
+    @Schema(description = "Email de contact", example = "owner@example.com", maxLength = 64)
     @NotBlank
     @Email
     @Size(max = 64)
     private String mail;
 
+    @Schema(description = "Identifiant categorie", example = "2")
     @NotNull
     private Long categoryId;
+    @Schema(description = "Statut de l'annonce", example = "DRAFT", allowableValues = {"DRAFT", "PUBLISHED", "ARCHIVED"})
     private Annonce.Status status;
 
     public AnnonceUpdateRequest() {
