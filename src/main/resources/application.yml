@@ -1,0 +1,58 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/todo}
+    username: ${DB_USERNAME:todo}
+    password: ${DB_PASSWORD:todo}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      initialization-fail-timeout: -1
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        boot:
+          allow_jdbc_metadata_access: false
+
+management:
+  endpoints:
+    enabled-by-default: false
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      enabled: true
+      show-components: always
+      show-details: always
+    info:
+      enabled: true
+  health:
+    db:
+      enabled: true
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Todo API
+    description: API REST de gestion des annonces
+    version: 1.0-SNAPSHOT
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui
+
+todo:
+  security:
+    admin-users: ${TODO_SECURITY_ADMIN_USERS:}
+    jwt:
+      secret: ${TODO_SECURITY_JWT_SECRET:change-me-in-production}
+      expiration-seconds: ${TODO_SECURITY_JWT_EXPIRATION_SECONDS:3600}

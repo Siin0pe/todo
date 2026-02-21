@@ -2,8 +2,8 @@ package com.example.todo.security.jaas;
 
 import com.example.todo.db.EntityManagerUtil;
 import com.example.todo.model.User;
-import com.example.todo.repository.UserRepository;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
 import org.mindrot.jbcrypt.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,8 +125,11 @@ public class DbLoginModule implements LoginModule {
     protected User authenticate(String username, char[] password) {
         EntityManager entityManager = EntityManagerUtil.getEntityManager();
         try {
-            UserRepository repository = new UserRepository(entityManager);
-            User user = repository.findByUsername(username);
+            TypedQuery<User> query = entityManager.createQuery(
+                    "SELECT u FROM User u WHERE u.username = :username",
+                    User.class);
+            query.setParameter("username", username);
+            User user = query.setMaxResults(1).getResultStream().findFirst().orElse(null);
             if (user == null || user.getPassword() == null) {
                 return null;
             }

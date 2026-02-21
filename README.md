@@ -1,129 +1,163 @@
-# Todo - API REST Annonce
+# Todo - API REST (Spring Boot)
 
-Projet Maven Jakarta EE (JAX-RS + JPA/Hibernate) pour la gestion d'annonces.
+Projet Maven/Spring Boot pour la gestion d'annonces.
+
+## Depot GitHub
+
+- URL du repo : `https://github.com/Siin0pe/todo`
+
+## Stack technique
+
+- Java 17 (CI valide aussi Java 21)
+- Spring Boot 3.5.5
+  - spring-boot-starter-web (API REST)
+  - spring-boot-starter-data-jpa (JPA/Hibernate)
+  - spring-boot-starter-security (authentification/autorisation)
+  - spring-boot-starter-validation (validation DTO)
+  - spring-boot-starter-actuator (health/info)
+  - spring-boot-starter-aop (logging metier)
+- Springdoc OpenAPI + Swagger UI
+- PostgreSQL (runtime)
+- H2 + Testcontainers (tests)
+- MapStruct (mapping DTO <-> entites)
+- JUnit 5 + Mockito
+- Docker + Docker Compose
+- GitHub Actions
 
 ## Livrables
 
 - Projet Maven complet : `pom.xml`, `.mvn/`, `mvnw`, `mvnw.cmd`
-- README (ce document) avec architecture, problemes rencontres et solutions
-- Scripts SQL : `sql/schema.sql`, `sql/seed.sql`
+- API Spring Boot : `src/main/java/com/example/todo`
+- Scripts SQL : `sql/schema.sql`, `sql/seed.sql`, `sql/migration_add_annonce_version.sql`
 - Tests automatises : `src/test/java`
+- Pipeline CI : `.github/workflows/ci.yml`
 - Collection Postman : `postman/todo-api.postman_collection.json`
 
 ## Architecture
 
 Architecture en couches :
 
-- API REST (ressources JAX-RS) : `src/main/java/com/example/todo/api`
-- Service (regles metier) : `src/main/java/com/example/todo/service`
-- Repository (acces JPA) : `src/main/java/com/example/todo/repository`
-- Model (entites) : `src/main/java/com/example/todo/model`
-- Securite (token + filtre) : `src/main/java/com/example/todo/api/security`
-- Auth login JAAS (`MasterAnnonceLogin`) puis emission token stateless : `src/main/java/com/example/todo/service/JaasAuthService.java`
-- Configuration servlet : `src/main/webapp/WEB-INF/web.xml` (`/api/*`)
+- Controllers REST Spring MVC : `src/main/java/com/example/todo/controller`
+- Services metier : `src/main/java/com/example/todo/service`
+- Repositories Spring Data JPA : `src/main/java/com/example/todo/repository`
+- Entites : `src/main/java/com/example/todo/model`
+- DTO : `src/main/java/com/example/todo/api/dto`
+- Mappers MapStruct : `src/main/java/com/example/todo/api/mapper`
+- Securite Spring/JWT : `src/main/java/com/example/todo/security/spring`
+- Configuration applicative : `src/main/resources/application.yml`
+
+Notes de migration :
+
+- Des classes JAX-RS/JAAS legacy existent encore (`src/main/java/com/example/todo/api/security`, `src/main/java/com/example/todo/security/jaas`, `src/main/webapp/WEB-INF/web.xml`).
+- Le flux principal actuellement actif est Spring MVC + Spring Security + JWT.
+
+## Problemes rencontres
+
+- Coexistence de code legacy (JAX-RS/JAAS) avec le nouveau flux Spring MVC/Spring Security.
+- Mise en place de tests d'integration reproductibles localement et en CI sans dependre d'une base partagee.
+- Documentation et examples API a maintenir alignes avec les DTO et les regles de securite JWT.
+
+## Solutions apportees
+
+- Conservation temporaire des composants legacy avec un flux principal isole sur Spring Boot, pour migration progressive.
+- Usage de Testcontainers (`postgres:16-alpine`) pour les tests d'integration afin d'avoir un environnement deterministe.
+- Integration Springdoc/OpenAPI + annotations Swagger sur controllers/DTO, et endpoints `/v3/api-docs` + `/swagger-ui`.
 
 ## Endpoints principaux
 
-- Auth : `POST /api/register`, `POST /api/login`
-- Categories : `GET/POST /api/categories`, `GET/PUT/DELETE /api/categories/{id}`
-- Annonces : `GET/POST /api/annonces`, `GET/PUT/PATCH/DELETE /api/annonces/{id}`
-- OpenAPI : `GET /api/openapi`, `GET /api/openapi.json`, `GET /api/openapi.yaml`
-- Swagger UI : `GET /swagger-ui.html`
+Endpoints publics :
 
-## Problemes rencontres et solutions
+- `POST /api/auth/login`
+- `POST /api/register`
+- `GET /v3/api-docs`
+- `GET /v3/api-docs.yaml`
+- `GET /swagger-ui` (redirection vers Swagger UI)
+- `GET /actuator/health`
+- `GET /actuator/info`
 
-- Separation tests unitaires vs integration
-  - Probleme : execution trop longue et diagnostics moins lisibles si tout tourne ensemble.
-  - Solution : profils Maven dedies (`unit-tests`, `integration-tests`, `all-tests`) avec Surefire/Failsafe.
+Endpoints proteges (`Authorization: Bearer <token>`) :
 
-- Validation et erreurs API
-  - Probleme : retours d'erreur heterogenes.
-  - Solution : DTO valides (`jakarta.validation`) + exception mappers centralises pour des reponses JSON coherentes.
+- `GET/POST /api/categories`
+- `GET/PUT/DELETE /api/categories/{id}`
+- `GET/POST /api/annonces`
+- `GET/PUT/PATCH/DELETE /api/annonces/{id}`
 
-- Documentation API exploitable
-  - Probleme : difficultes de verification manuelle sans contrat clair.
-  - Solution : exposition OpenAPI + page Swagger UI + collection Postman prete a l'emploi.
-
-## Scripts SQL
-
-- `sql/schema.sql` : schema PostgreSQL (tables, contraintes, index, FK)
-- `sql/seed.sql` : jeu de donnees minimal pour demarrage rapide
-
-## Lancer le projet
+## Execution locale
 
 Prerequis :
 
-- Java 8+
-- Maven 3.9+ (ou wrapper `mvnw`)
-- PostgreSQL (base `todo`)
+- Java 17+
+- Docker (recommande pour PostgreSQL local et tests d'integration Testcontainers)
 
-Commandes :
-
-```bash
-./mvnw clean package
-```
-
-### Activer JAAS au demarrage Tomcat
-
-Configurer l'option JVM suivante dans Tomcat :
+Build + tests :
 
 ```bash
--Djava.security.auth.login.config=/chemin/vers/jaas.conf
+./mvnw clean verify
 ```
 
-Exemple (Linux/macOS) dans `setenv.sh` :
+Sous Windows (PowerShell) :
+
+```powershell
+.\mvnw.cmd clean verify
+```
+
+Demarrer l'API (sans Docker Compose) :
 
 ```bash
-export CATALINA_OPTS="$CATALINA_OPTS -Djava.security.auth.login.config=/opt/tomcat/webapps/todo/WEB-INF/classes/jaas.conf"
+./mvnw spring-boot:run
 ```
 
-Exemple (Windows) dans `setenv.bat` :
+Configuration DB par defaut (`application.yml`) :
 
-```bat
-set "CATALINA_OPTS=%CATALINA_OPTS% -Djava.security.auth.login.config=C:\tomcat\webapps\todo\WEB-INF\classes\jaas.conf"
-```
+- `DB_URL=jdbc:postgresql://localhost:5432/todo`
+- `DB_USERNAME=todo`
+- `DB_PASSWORD=todo`
 
-Preuve de chargement au demarrage :
+Variables de securite JWT :
 
-- Listener de demarrage : `src/main/java/com/example/todo/security/JaasBootstrapListener.java`
-- Log attendu si OK : `jaas_config_loaded ... loginEntries=1 tokenEntries=1`
+- `TODO_SECURITY_JWT_SECRET` (defaut : `change-me-in-production`)
+- `TODO_SECURITY_JWT_EXPIRATION_SECONDS` (defaut : `3600`)
+- `TODO_SECURITY_ADMIN_USERS` (liste CSV des usernames admin)
 
-### Flow d'authentification (JAAS + token stateless)
+## Docker
 
-1. `POST /api/login` avec `login/password`.
-2. Le backend lance `LoginContext("MasterAnnonceLogin", callbackHandler)` via `JaasAuthService`.
-3. Si succes JAAS, le `Subject` contient `UserPrincipal` (+ roles) et le serveur genere un token opaque (`UUID`).
-4. Le client envoie ensuite `Authorization: Bearer <token>` a chaque requete protegee.
-5. Le filtre JAX-RS `@Secured` lance `LoginContext("MasterAnnonceToken", callbackHandlerWithToken)` a chaque requete.
-6. Si token invalide/absent : `401 Unauthorized`.
-7. Si token valide : le `Subject` est reconstruit et injecte dans un `SecurityContext` de requete.
-8. La couche service exploite l'identite courante (userId/roles) sans session HTTP serveur.
-
-Codes HTTP d'autorisation :
-
-- `401` : token absent/invalide (filtre `AuthFilter`).
-- `403` : utilisateur authentifie mais action interdite par regle metier (ex: non-auteur, role insuffisant).
-
-## Tests automatises
-
-Conventions :
-
-- unitaires : `*UnitTest.java`
-- integration : `*IT.java`
-
-Commandes :
+Lancer l'API + PostgreSQL :
 
 ```bash
-./mvnw test -Punit-tests
-./mvnw verify -Pintegration-tests
-./mvnw verify -Pall-tests
+docker compose up --build
 ```
+
+Acces apres demarrage :
+
+- API : `http://localhost:18080`
+- Swagger UI : `http://localhost:18080/swagger-ui`
+- OpenAPI JSON : `http://localhost:18080/v3/api-docs`
 
 ## Postman
 
-Importer `postman/todo-api.postman_collection.json`.
+- Collection : `postman/todo-api.postman_collection.json`
+- Variables fournies : `baseUrl`, `token`, `authorId`, `categoryId`, `annonceId`.
+- La requete `POST /api/auth/login` met automatiquement a jour `token` a partir du JSON de reponse.
 
-Variables de collection :
+## Tests et CI
 
-- `baseUrl` (par defaut `http://localhost:8080/todo/api`)
-- `token`, `userId`, `categoryId`, `annonceId` (alimentees automatiquement par les scripts de test Postman)
+Workflow : `.github/workflows/ci.yml`
+
+Declenchement :
+
+- `push` sur toutes les branches
+- `pull_request` vers `main`
+
+Pipeline :
+
+- matrice Java `17` et `21`
+- build + tests : `mvn -B clean verify`
+- publication artefacts :
+  - `master-annonce-jar`
+  - `master-annonce-jacoco-report`
+  - `master-annonce-docker-image`
+
+Strategie base de donnees en CI :
+
+- Testcontainers (`ApiIntegrationSpringTest` demarre `postgres:16-alpine`)
+- pas de service PostgreSQL dedie dans le workflow

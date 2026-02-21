@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build and test (Java ${{ matrix.java }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        java: ["17", "21"]
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Java ${{ matrix.java }} with Maven cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+
+      - name: Build and run all tests
+        run: mvn -B clean verify
+
+      - name: Upload JAR artifact
+        if: matrix.java == '17'
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-annonce-jar
+          path: target/*.jar
+          if-no-files-found: error
+
+      - name: Upload JaCoCo report
+        if: matrix.java == '17'
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-annonce-jacoco-report
+          path: target/site/jacoco
+          if-no-files-found: error
+
+  docker-build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    needs: build-test
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: master-annonce-jar
+          path: dist/jar
+
+      - name: Build Docker image
+        run: docker build -f .github/docker/Dockerfile.runtime -t todo:${{ github.sha }} dist/jar
+
+      - name: Export Docker image
+        run: docker save todo:${{ github.sha }} -o master-annonce-image.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-annonce-docker-image
+          path: master-annonce-image.tar
+          if-no-files-found: error

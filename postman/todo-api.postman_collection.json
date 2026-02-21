@@ -1,329 +1,439 @@
 {
   "info": {
-    "_postman_id": "9e664ea0-a4b9-4fca-9f7d-dfd8c5164f04",
+    "_postman_id": "f2e2cc2e-9b12-4f0a-9995-40d4a6be58d5",
     "name": "Todo API",
-    "description": "Collection pour valider le flux principal: register, login, categories et annonces.",
+    "description": "Collection Postman pour tester l'API Todo (auth, categories, annonces, docs).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Auth - Register",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"username\": \"demo_user\",\n  \"email\": \"demo_user@example.com\",\n  \"password\": \"secret123\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/register",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "register"
-          ]
-        }
-      },
-      "event": [
+      "name": "Health and Docs",
+      "item": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('status 201 or 409', function () {",
-              "    pm.expect([201, 409]).to.include(pm.response.code);",
-              "});",
-              "if (pm.response.code === 201) {",
-              "    var json = pm.response.json();",
-              "    if (json && json.id) {",
-              "        pm.collectionVariables.set('userId', String(json.id));",
-              "    }",
-              "}"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Auth - Login",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"login\": \"demo_user\",\n  \"password\": \"secret123\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/login",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "login"
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('status 200', function () {",
-              "    pm.response.to.have.status(200);",
-              "});",
-              "var json = pm.response.json();",
-              "pm.expect(json.token).to.be.a('string').and.not.empty;",
-              "pm.collectionVariables.set('token', json.token);"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Categories - Create",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"label\": \"Immobilier\"\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/categories",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "categories"
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('status 201 or 409', function () {",
-              "    pm.expect([201, 409]).to.include(pm.response.code);",
-              "});",
-              "if (pm.response.code === 201) {",
-              "    var json = pm.response.json();",
-              "    if (json && json.id) {",
-              "        pm.collectionVariables.set('categoryId', String(json.id));",
-              "    }",
-              "}"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Categories - List",
-      "request": {
-        "method": "GET",
-        "url": {
-          "raw": "{{baseUrl}}/categories?page=0&size=20",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "categories"
-          ],
-          "query": [
-            {
-              "key": "page",
-              "value": "0"
-            },
-            {
-              "key": "size",
-              "value": "20"
+          "name": "GET /actuator/health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
             }
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('status 200', function () {",
-              "    pm.response.to.have.status(200);",
-              "});",
-              "var json = pm.response.json();",
-              "if (!pm.collectionVariables.get('categoryId') && json.items && json.items.length > 0) {",
-              "    pm.collectionVariables.set('categoryId', String(json.items[0].id));",
-              "}"
-            ]
           }
-        }
-      ]
-    },
-    {
-      "name": "Annonces - Create",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"title\": \"Appartement T2\",\n  \"description\": \"Bel appartement proche des commerces\",\n  \"adress\": \"10 rue des Fleurs\",\n  \"mail\": \"contact@example.com\",\n  \"authorId\": {{userId}},\n  \"categoryId\": {{categoryId}}\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/annonces",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "annonces"
-          ]
-        }
-      },
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('status 201', function () {",
-              "    pm.response.to.have.status(201);",
-              "});",
-              "var json = pm.response.json();",
-              "pm.collectionVariables.set('annonceId', String(json.id));"
-            ]
+          "name": "GET /v3/api-docs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v3/api-docs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v3",
+                "api-docs"
+              ]
+            }
           }
-        }
-      ]
-    },
-    {
-      "name": "Annonces - Get By Id",
-      "request": {
-        "method": "GET",
-        "url": {
-          "raw": "{{baseUrl}}/annonces/{{annonceId}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "annonces",
-            "{{annonceId}}"
-          ]
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('status 200', function () {",
-              "    pm.response.to.have.status(200);",
-              "});"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "Annonces - Patch",
-      "request": {
-        "method": "PATCH",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"status\": \"PUBLISHED\"\n}"
         },
-        "url": {
-          "raw": "{{baseUrl}}/annonces/{{annonceId}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "annonces",
-            "{{annonceId}}"
-          ]
-        }
-      },
-      "event": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('status 200', function () {",
-              "    pm.response.to.have.status(200);",
-              "});"
-            ]
+          "name": "GET /swagger-ui",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/swagger-ui",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "swagger-ui"
+              ]
+            }
           }
         }
       ]
     },
     {
-      "name": "Annonces - Delete",
-      "request": {
-        "method": "DELETE",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/annonces/{{annonceId}}",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "annonces",
-            "{{annonceId}}"
-          ]
-        }
-      },
-      "event": [
+      "name": "Auth",
+      "item": [
         {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('status 204', function () {",
-              "    pm.response.to.have.status(204);",
-              "});"
-            ]
+          "name": "POST /api/register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman.user\",\n  \"email\": \"postman.user@example.com\",\n  \"password\": \"secret123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var data = pm.response.json();",
+                  "  if (data && data.token) {",
+                  "    pm.collectionVariables.set('token', data.token);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman.user\",\n  \"password\": \"secret123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "GET /api/categories?page=0&size=20",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/categories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  var data = pm.response.json();",
+                  "  if (data && data.id) {",
+                  "    pm.collectionVariables.set('categoryId', String(data.id));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Immobilier\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /api/categories/{{categoryId}}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Services\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories",
+                "{{categoryId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/categories/{{categoryId}}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories",
+                "{{categoryId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Annonces",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "GET /api/annonces?page=0&size=20",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/annonces?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "annonces"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/annonces",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  var data = pm.response.json();",
+                  "  if (data && data.id) {",
+                  "    pm.collectionVariables.set('annonceId', String(data.id));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Appartement T2 centre ville\",\n  \"description\": \"Bel appartement proche des commerces\",\n  \"adress\": \"10 rue des Fleurs, Paris\",\n  \"mail\": \"contact@example.com\",\n  \"authorId\": {{authorId}},\n  \"categoryId\": {{categoryId}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/annonces",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "annonces"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/annonces/{{annonceId}}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/annonces/{{annonceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "annonces",
+                "{{annonceId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /api/annonces/{{annonceId}}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Maison avec jardin\",\n  \"description\": \"Maison 4 pieces, quartier calme\",\n  \"adress\": \"5 avenue de la Republique, Lille\",\n  \"mail\": \"owner@example.com\",\n  \"categoryId\": {{categoryId}},\n  \"status\": \"PUBLISHED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/annonces/{{annonceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "annonces",
+                "{{annonceId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /api/annonces/{{annonceId}}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ARCHIVED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/annonces/{{annonceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "annonces",
+                "{{annonceId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/annonces/{{annonceId}}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/annonces/{{annonceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "annonces",
+                "{{annonceId}}"
+              ]
+            }
           }
         }
       ]
@@ -332,14 +442,14 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080/todo/api"
+      "value": "http://localhost:18080"
     },
     {
       "key": "token",
       "value": ""
     },
     {
-      "key": "userId",
+      "key": "authorId",
       "value": "1"
     },
     {

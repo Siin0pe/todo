@@ -1,49 +1,54 @@
 package com.example.todo.api.mapper;
 
-import com.example.todo.api.dto.AnnonceResponse;
+import com.example.todo.api.dto.AnnonceCreateRequest;
+import com.example.todo.api.dto.AnnonceDTO;
+import com.example.todo.api.dto.AnnoncePatchRequest;
+import com.example.todo.api.dto.AnnonceUpdateRequest;
 import com.example.todo.model.Annonce;
-import com.example.todo.model.Category;
-import com.example.todo.model.User;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.Named;
+import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.ReportingPolicy;
 
 import java.sql.Timestamp;
 
-public final class AnnonceMapper {
-    private AnnonceMapper() {
-    }
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface AnnonceMapper {
 
-    public static AnnonceResponse toResponse(Annonce annonce) {
-        if (annonce == null) {
-            return null;
-        }
-        return AnnonceResponse.builder()
-                .id(annonce.getId())
-                .title(annonce.getTitle())
-                .description(annonce.getDescription())
-                .adress(annonce.getAdress())
-                .mail(annonce.getMail())
-                .date(formatTimestamp(annonce.getDate()))
-                .status(formatStatus(annonce.getStatus()))
-                .authorId(resolveUserId(annonce.getAuthor()))
-                .categoryId(resolveCategoryId(annonce.getCategory()))
-                .build();
-    }
+    @Mapping(target = "authorId", source = "author.id")
+    @Mapping(target = "categoryId", source = "category.id")
+    @Mapping(target = "date", source = "date", qualifiedByName = "timestampToIso")
+    @Mapping(target = "status", source = "status")
+    AnnonceDTO toDto(Annonce annonce);
 
-    private static String formatTimestamp(Timestamp timestamp) {
-        if (timestamp == null) {
-            return null;
-        }
-        return timestamp.toInstant().toString();
-    }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "date", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "author", ignore = true)
+    @Mapping(target = "category", ignore = true)
+    @Mapping(target = "version", ignore = true)
+    Annonce toEntity(AnnonceCreateRequest request);
 
-    private static String formatStatus(Annonce.Status status) {
-        return status == null ? null : status.name();
-    }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "date", ignore = true)
+    @Mapping(target = "author", ignore = true)
+    @Mapping(target = "category", ignore = true)
+    @Mapping(target = "version", ignore = true)
+    void updateFromRequest(AnnonceUpdateRequest request, @MappingTarget Annonce annonce);
 
-    private static Long resolveUserId(User user) {
-        return user == null ? null : user.getId();
-    }
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "date", ignore = true)
+    @Mapping(target = "author", ignore = true)
+    @Mapping(target = "category", ignore = true)
+    @Mapping(target = "version", ignore = true)
+    void patchFromRequest(AnnoncePatchRequest request, @MappingTarget Annonce annonce);
 
-    private static Long resolveCategoryId(Category category) {
-        return category == null ? null : category.getId();
+    @Named("timestampToIso")
+    default String timestampToIso(Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toInstant().toString();
     }
 }
